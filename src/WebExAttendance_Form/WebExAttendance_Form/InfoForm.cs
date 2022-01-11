@@ -46,26 +46,26 @@ namespace WebExAttendance_Form
 
                 //check if a substring of the word is a substring of their (long) name
                 //e.g.12313jonathan(word) vs jonathanroger(name)
-                foreach (string s in names)
-                {
-                    char secondLtr = s[1];
-                    //look for same letter
-                    for (int i = 0; i < word.Length; ++i)
-                    {
-                        if (word[i] != secondLtr)
-                            continue;
-                        int sameLtrCount = 1;
-                        for (int j = 0; j < s.Length; ++j)
-                        {
-                            if (i + j >= word.Length)
-                                break;
-                            if (word[i + j] == s[j])
-                                ++sameLtrCount;
-                        }
-                        if (sameLtrCount >= substringThreshold)
-                            return true;
-                    }
-                }
+                //foreach (string s in names)
+                //{
+                //    char secondLtr = s[1];
+                //    //look for same letter
+                //    for (int i = 0; i < word.Length; ++i)
+                //    {
+                //        if (word[i] != secondLtr)
+                //            continue;
+                //        int sameLtrCount = 1;
+                //        for (int j = 0; j < s.Length; ++j)
+                //        {
+                //            if (i + j >= word.Length)
+                //                break;
+                //            if (word[i + j] == s[j])
+                //                ++sameLtrCount;
+                //        }
+                //        if (sameLtrCount >= substringThreshold)
+                //            return true;
+                //    }
+                //}
 
 
                 //check if word is similar to name i.e. mispelt with noise infront
@@ -147,6 +147,9 @@ namespace WebExAttendance_Form
         public InfoForm()
         {
             InitializeComponent();
+
+            SetNameList("NAMELIST.txt");
+            SetFilter("FILTERS.txt");
         }
 
         private void InfoForm_Load(object sender, EventArgs e)

@@ -20,12 +20,13 @@ namespace WebExAttendance_Form
         private string[] vocab = null;
 
         //CV
-        private TextDetectionModel_EAST model_textDet = null;
+        private TextDetectionModel_DB model_textDet = null;
         private TextRecognitionModel model_textRec = null;
-        private Size textDetectInputSize = new Size(640, 640);
+        private Size textDetectInputSize = new Size(736, 736);
         private Size textRecInputSize = new Size(100, 32);
-        private const float confThreshold = 0.95f;
-        private const float nmsThreshold = 0.8f; //Non-maximum suppression threshold
+        private const float binaryThreshold = 0.1f;
+        private const float polygonThreshold = 0.5f;
+        private const int maxCandidates = 200;
 
         #region Init
         public MainForm()
@@ -39,22 +40,21 @@ namespace WebExAttendance_Form
             //init CV stuff
             CvInvoke.Init();
             //load in models
-            model_textDet = new TextDetectionModel_EAST("models/frozen_east_text_detection.pb");
-            model_textDet.ConfidenceThreshold = confThreshold;
-            model_textDet.NMSThreshold = nmsThreshold;
+            model_textDet = new TextDetectionModel_DB("models/DB_IC15_resnet18.onnx");
+            model_textDet.UnclipRatio = 2.0f;
+            model_textDet.BinaryThreshold = binaryThreshold;
+            model_textDet.MaxCandidates = maxCandidates;
+            model_textDet.PolygonThreshold = polygonThreshold;
             model_textDet.SetInputSize(textDetectInputSize);
-            model_textDet.SetInputScale(1.0);
-            model_textDet.SetInputMean(new MCvScalar(0.5f, 0.5f, 0.5f));
-            model_textRec = new TextRecognitionModel("models//crnn_cs.onnx");
+            model_textDet.SetInputScale(1.0 / 255);
+            model_textDet.SetInputMean(new MCvScalar(122.67891434, 116.66876762, 104.00698793));
+            model_textRec = new TextRecognitionModel("models//CRNN_VGG_BiLSTM_CTC.onnx");
             model_textRec.DecodeType = "CTC-greedy";
-            vocab = LoadVocab("models/alphabet_94.txt");
+            vocab = LoadVocab("models/alphabet_36.txt");
             model_textRec.Vocabulary = vocab;
             model_textRec.SetInputSize(textRecInputSize);
             model_textRec.SetInputScale(1.0 / 127.5);
             model_textRec.SetInputMean(new MCvScalar(127.5, 127.5, 127.5));
-
-            infoForm.SetNameList("NAMELIST.txt");
-            infoForm.SetFilter("FILTERS.txt");
         }
         #endregion
 
@@ -143,19 +143,19 @@ namespace WebExAttendance_Form
             else
             {
                 //crop images into a list
-                var croppedImgs = new List<Image<Bgr, byte>>(confidences.Size);
-                for (int i = 0; i < confidences.Size; ++i)
+                var croppedImgs = new List<Image<Gray, byte>>(confidences.Size);
+                for (int i = 0; i < detections.Size; ++i)
                 {
-                    Rectangle cropArea = VectorOfPointsToRect(detections[i], inputBmp.Width, inputBmp.Height, 1);
+                    Rectangle cropArea = VectorOfPointsToRect(detections[i], inputBmp.Width, inputBmp.Height, -1);
                     Bitmap croppedBmp = CropImg(inputBmp, cropArea);
-                    croppedBmp = ResizeAndPadImg(croppedBmp, textRecInputSize, Color.Black);
-                    croppedImgs.Add(croppedBmp.ToImage<Bgr, byte>());//.ThresholdBinary(new Gray(175), new Gray(255)));
+                    croppedBmp = ResizeAndPadImg(croppedBmp, textRecInputSize, Color.Black, 0.3);
+                    croppedImgs.Add(croppedBmp.ToImage<Gray, byte>().ThresholdBinaryInv(new Gray(170), new Gray(255)));
                 }
 
 #if TRUE  // VISUALIZE TEXT DETECT RESULTS
                 {
                     IInputOutputArray testImg = textDetectInput;
-                    for (int i = 0; i < confidences.Size; ++i)
+                    for (int i = 0; i < detections.Size; ++i)
                     {
                         //results += i.ToString() + ": " + confidences[i].ToString() + "\n";
                         CvInvoke.Line(testImg, detections[i][0], detections[i][1], new MCvScalar(255, 0, 0), 1);
@@ -165,12 +165,12 @@ namespace WebExAttendance_Form
                     }
                     CvInvoke.Resize(testImg, testImg, new Size(800, 800), 0, 0, Inter.Cubic);
                     CvInvoke.Imshow("Detection Results", testImg);
-                    //for (int i = 0; i < Math.Min(3, confidences.Size); ++i)
-                    //{
-                    //    var croppedImg = croppedImgs[i];
-                    //    CvInvoke.Resize(croppedImg, croppedImg, new Size(croppedImg.Width * 2, croppedImg.Height * 2), 0, 0, Inter.Cubic);
-                    //    CvInvoke.Imshow("Detection Results Cropped " + i.ToString(), croppedImg);
-                    //}
+                    for (int i = 0; i < Math.Min(3, confidences.Size); ++i)
+                    {
+                        var croppedImg = croppedImgs[i];
+                        CvInvoke.Resize(croppedImg, croppedImg, new Size(croppedImg.Width * 2, croppedImg.Height * 2), 0, 0, Inter.Cubic);
+                        CvInvoke.Imshow("Detection Results Cropped " + i.ToString(), croppedImg);
+                    }
                 }
 #endif
 
@@ -189,29 +189,30 @@ namespace WebExAttendance_Form
             }            
             infoForm.Show();
         }
-        private Bitmap ResizeAndPadImg(Bitmap bmp, Size targetSize, Color padColor)
+        private Bitmap ResizeAndPadImg(Bitmap bmp, Size targetSize, Color padColor, double aspectBias = 1)
         {
             Bitmap ret = new Bitmap(targetSize.Width, targetSize.Height);
             double aspect = (double)bmp.Width / (double)bmp.Height;
-
+            double biasedAspect = aspect * aspectBias;
             using (Graphics graphics = Graphics.FromImage(ret))
             {
                 graphics.Clear(padColor);
                 graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bicubic;
-                if (aspect > 1) //horizontal
+
+                if (biasedAspect > 1) //horizontal
                 {
-                    int h = (int)Math.Round(((double)ret.Width) / aspect);
+                    int h = (int)Math.Floor(((double)ret.Width) / aspect);
                     graphics.DrawImage(bmp, 0, 0, ret.Width, h);
                 }
-                else if (aspect < 1) //vertical
+                else if (biasedAspect < 1) //vertical
                 {
-                    int w = (int)Math.Round(((double)ret.Height) * aspect);
+                    int w = (int)Math.Floor(((double)ret.Height) * aspect);
 
                     graphics.DrawImage(bmp, 0, 0, w, ret.Height);
                 }
                 else
                 {
-                    graphics.DrawImage(bmp, 0, 0);
+                    graphics.DrawImage(bmp, 0, 0, ret.Width, ret.Height);
                 }
             }
 
