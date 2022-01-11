@@ -17,22 +17,22 @@ namespace WebExAttendance_Form
         private InfoForm infoForm = null;
         private Image image = null;
         private string imageFilePath = "";
+        private string[] vocab = null;
 
         //CV
         private TextDetectionModel_EAST model_textDet = null;
         private TextRecognitionModel model_textRec = null;
         private Size textDetectInputSize = new Size(640, 640);
         private Size textRecInputSize = new Size(100, 32);
-        private float confThreshold = 0.3f;
-        private float nmsThreshold = 0.4f; //Non-maximum suppression threshold
-        private string[] vocab = null;
+        private const float confThreshold = 0.95f;
+        private const float nmsThreshold = 0.8f; //Non-maximum suppression threshold
 
         #region Init
         public MainForm()
         {
             InitializeComponent();
         }
-
+         
         private void MainForm_Load(object sender, EventArgs e)
         {
             ResetState();
@@ -43,15 +43,18 @@ namespace WebExAttendance_Form
             model_textDet.ConfidenceThreshold = confThreshold;
             model_textDet.NMSThreshold = nmsThreshold;
             model_textDet.SetInputSize(textDetectInputSize);
-            //model_textDet.SetInputScale(1.0 / 255.0);
-            //model_textDet.SetInputMean(new MCvScalar(122.67891434, 116.66876762, 104.00698793));
-            model_textRec = new TextRecognitionModel("models/crnn.onnx");
+            model_textDet.SetInputScale(1.0);
+            model_textDet.SetInputMean(new MCvScalar(0.5f, 0.5f, 0.5f));
+            model_textRec = new TextRecognitionModel("models//crnn_cs.onnx");
             model_textRec.DecodeType = "CTC-greedy";
-            vocab = LoadVocab("models/alphabet_36.txt");
+            vocab = LoadVocab("models/alphabet_94.txt");
             model_textRec.Vocabulary = vocab;
             model_textRec.SetInputSize(textRecInputSize);
-            //model_textRec.SetInputScale(1.0 / 127.5);
-            //model_textRec.SetInputMean(new MCvScalar(127.5, 127.5, 127.5));
+            model_textRec.SetInputScale(1.0 / 127.5);
+            model_textRec.SetInputMean(new MCvScalar(127.5, 127.5, 127.5));
+
+            infoForm.SetNameList("NAMELIST.txt");
+            infoForm.SetFilter("FILTERS.txt");
         }
         #endregion
 
@@ -86,7 +89,7 @@ namespace WebExAttendance_Form
             frame.Hide();
 
             infoForm = new InfoForm();
-            infoForm.Hide();
+            infoForm.Hide();            
 
             frame.FormClosing += FrameFormClosing;
             infoForm.FormClosing += InfoFormClosing;
@@ -97,7 +100,7 @@ namespace WebExAttendance_Form
 
             UpdateImageState(null);
         }
-        
+
         private void InfoFormClosing(object sender, FormClosingEventArgs args)
         {
             args.Cancel = true;
@@ -119,7 +122,7 @@ namespace WebExAttendance_Form
         {
             Bitmap inputBmp = ResizeAndPadImg(new Bitmap(img), textDetectInputSize, Color.Black);
             Bitmap inputBmpCopy = new Bitmap(inputBmp); //make a copy to preserve input
-            var textDetectInput = inputBmpCopy.ToImage<Bgr,byte>(); 
+            var textDetectInput = inputBmpCopy.ToImage<Bgr, byte>();
             //CvInvoke.Imshow("Input img resized", textDetectInput); //debug
 
             //////// TEXT DETECTION
@@ -140,13 +143,13 @@ namespace WebExAttendance_Form
             else
             {
                 //crop images into a list
-                List<Bitmap> croppedBmps = new List<Bitmap>(confidences.Size);
+                var croppedImgs = new List<Image<Bgr, byte>>(confidences.Size);
                 for (int i = 0; i < confidences.Size; ++i)
-                { 
-                    Rectangle cropArea = VectorOfPointsToRect(detections[i], inputBmp.Width, inputBmp.Height, 3);
+                {
+                    Rectangle cropArea = VectorOfPointsToRect(detections[i], inputBmp.Width, inputBmp.Height, 1);
                     Bitmap croppedBmp = CropImg(inputBmp, cropArea);
                     croppedBmp = ResizeAndPadImg(croppedBmp, textRecInputSize, Color.Black);
-                    croppedBmps.Add(croppedBmp);
+                    croppedImgs.Add(croppedBmp.ToImage<Bgr, byte>());//.ThresholdBinary(new Gray(175), new Gray(255)));
                 }
 
 #if TRUE  // VISUALIZE TEXT DETECT RESULTS
@@ -162,26 +165,28 @@ namespace WebExAttendance_Form
                     }
                     CvInvoke.Resize(testImg, testImg, new Size(800, 800), 0, 0, Inter.Cubic);
                     CvInvoke.Imshow("Detection Results", testImg);
-                    for (int i = 0; i < Math.Min(3, confidences.Size); ++i)
-                        CvInvoke.Imshow("Detection Results Cropped " + i.ToString(), croppedBmps[i].ToImage<Bgr, byte>());
+                    //for (int i = 0; i < Math.Min(3, confidences.Size); ++i)
+                    //{
+                    //    var croppedImg = croppedImgs[i];
+                    //    CvInvoke.Resize(croppedImg, croppedImg, new Size(croppedImg.Width * 2, croppedImg.Height * 2), 0, 0, Inter.Cubic);
+                    //    CvInvoke.Imshow("Detection Results Cropped " + i.ToString(), croppedImg);
+                    //}
                 }
 #endif
 
-                //////// TEXT RECOGNITION
-                //prepare input array
-                var textRecInputArr = croppedBmps; // alias
+                //////// TEXT RECOGNITION               
                 //recognise text
-                List<string> recognisedText = new List<string>(textRecInputArr.Count);
-                foreach (var textRecInput in textRecInputArr)
+                List<string> recognisedText = new List<string>(croppedImgs.Count);
+                foreach (var textRecInput in croppedImgs)
                 {
-                    string res = "help";
-                    //string res = model_textRec.Recognize(textRecInput.ToImage<Bgr,byte>());
+                    string res = model_textRec.Recognize(textRecInput);   
                     recognisedText.Add(res);
-                    results += res + "\n";
+                    Console.WriteLine(res);
                 }
 
-            }
-            infoForm.SetDebugText(results);
+                //let infoForm process results
+                infoForm.ProcessWords(recognisedText);                
+            }            
             infoForm.Show();
         }
         private Bitmap ResizeAndPadImg(Bitmap bmp, Size targetSize, Color padColor)
@@ -205,7 +210,7 @@ namespace WebExAttendance_Form
                     graphics.DrawImage(bmp, 0, 0, w, ret.Height);
                 }
                 else
-                { 
+                {
                     graphics.DrawImage(bmp, 0, 0);
                 }
             }
@@ -236,7 +241,7 @@ namespace WebExAttendance_Form
             int rw = Math.Min(width - pointsX[0], pointsX[3] - pointsX[0] + expandAmt * 2);
             int rh = Math.Min(height - pointsY[0], pointsY[3] - pointsY[0] + expandAmt * 2);
 
-            return new Rectangle(pointsX[0], pointsY[0], rw, rh);           
+            return new Rectangle(pointsX[0], pointsY[0], rw, rh);
         }
 
         private string[] LoadVocab(string filename)
@@ -245,12 +250,12 @@ namespace WebExAttendance_Form
             for (int i = 0; i < lines.Length; ++i)
             {
                 lines[i].Trim();
-            }                
+            }
             return lines;
-        }
-#endregion
+        }        
+        #endregion
 
-#region ButtonCallbacks
+        #region ButtonCallbacks
         private void btnShowScreenshotWindow_Click(object sender, EventArgs e)
         {
             frame.Show();
@@ -271,7 +276,7 @@ namespace WebExAttendance_Form
             else
             {
                 //hide UI                
-                UpdateImageState(null);                    
+                UpdateImageState(null);
             }
         }
 
@@ -279,7 +284,6 @@ namespace WebExAttendance_Form
         {
             if (Clipboard.ContainsImage())
             {
-                Console.WriteLine("test");
                 Image clipboardImg = Clipboard.GetImage();
                 if (clipboardImg != null)
                 {
@@ -320,6 +324,9 @@ namespace WebExAttendance_Form
 
         private void btnDetect_Click(object sender, EventArgs e)
         {
+            frame.Hide();
+            btnSelectImageScreen.Hide();
+            btnHideScreenshotWindow.Hide();
             DoAnalysis(image);
         }
 
@@ -328,6 +335,6 @@ namespace WebExAttendance_Form
             ResetState();
         }
 
-#endregion
+        #endregion
     }
 }

@@ -29,26 +29,17 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(InfoForm));
-            this.listView1 = new System.Windows.Forms.ListView();
             this.debugLabel = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
-            // listView1
-            // 
-            this.listView1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.listView1.HideSelection = false;
-            this.listView1.Location = new System.Drawing.Point(12, 12);
-            this.listView1.Name = "listView1";
-            this.listView1.Size = new System.Drawing.Size(260, 437);
-            this.listView1.TabIndex = 0;
-            this.listView1.UseCompatibleStateImageBehavior = false;
-            // 
             // debugLabel
             // 
-            this.debugLabel.AutoSize = true;
-            this.debugLabel.Location = new System.Drawing.Point(39, 29);
+            this.debugLabel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.debugLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.debugLabel.ForeColor = System.Drawing.SystemColors.ControlLight;
+            this.debugLabel.Location = new System.Drawing.Point(12, 9);
             this.debugLabel.Name = "debugLabel";
-            this.debugLabel.Size = new System.Drawing.Size(35, 13);
+            this.debugLabel.Size = new System.Drawing.Size(260, 720);
             this.debugLabel.TabIndex = 1;
             this.debugLabel.Text = "label1";
             // 
@@ -57,20 +48,17 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlDarkDark;
-            this.ClientSize = new System.Drawing.Size(284, 461);
+            this.ClientSize = new System.Drawing.Size(284, 738);
             this.Controls.Add(this.debugLabel);
-            this.Controls.Add(this.listView1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "InfoForm";
             this.Text = "Attendance Results";
+            this.Load += new System.EventHandler(this.InfoForm_Load);
             this.ResumeLayout(false);
-            this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.ListView listView1;
         private System.Windows.Forms.Label debugLabel;
     }
 }
