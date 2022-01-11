@@ -300,8 +300,6 @@ namespace WebExAttendance_Form
 
         private void btnSelectImageScreen_Click(object sender, EventArgs e)
         {
-            Console.WriteLine("Here");
-
             //hide the form so that it is not captured
             frame.Hide();
 

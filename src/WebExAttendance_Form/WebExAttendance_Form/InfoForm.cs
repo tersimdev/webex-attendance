@@ -70,18 +70,18 @@ namespace WebExAttendance_Form
 
                 //check if word is similar to name i.e. mispelt with noise infront
                 //e.g. 123jomath(word) vs jonath(name)
-                foreach (string s in names)
-                {
-                    //char firstLtr = s[0];
-                    for (int i = 0; i < word.Length; ++i)
-                    {
-                        int distance = LevenshteinDistance(word, s);
+                //foreach (string s in names)
+                //{
+                //    //char firstLtr = s[0];
+                //    for (int i = 0; i < word.Length; ++i)
+                //    {
+                //        int distance = LevenshteinDistance(word, s);
 
-                        if (word.Length >= substringThreshold)
-                            if (distance <= stringDistMax)
-                                return true;
-                    }
-                }
+                //        if (word.Length >= substringThreshold)
+                //            if (distance <= stringDistMax)
+                //                return true;
+                //    }
+                //}
 
                 return false;
             }
@@ -161,17 +161,6 @@ namespace WebExAttendance_Form
         {
             if (!this.Visible)
                 ResetAttendance();
-        }
-
-        protected override void OnClosing(CancelEventArgs e)
-        {
-            e.Cancel = true;
-            this.Hide();
-        }
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            e.Cancel = true;
-            this.Hide();
         }
 
         #region Public
