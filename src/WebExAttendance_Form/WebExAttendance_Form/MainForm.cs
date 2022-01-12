@@ -300,10 +300,9 @@ namespace WebExAttendance_Form
 
         private void btnSelectImageScreen_Click(object sender, EventArgs e)
         {
-            //hide the form so that it is not captured
             frame.Hide();
 
-            //take screenshot of desktop at specified rect of form
+            //take screenshot of desktop at specified rect of form             
             Rectangle rect = frame.DesktopBounds;
             image = new Bitmap(rect.Width, rect.Height);
             Graphics g = Graphics.FromImage(image);
