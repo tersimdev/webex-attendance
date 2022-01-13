@@ -115,7 +115,7 @@ namespace WebExAttendance_Form
                 int matchedLen = GetStringMetric(s, word);
                 bool similar = matchedLen >= Math.Min(s.Length, stringMatchedMin) && 
                     Math.Max(0, s.Length - matchedLen) + Math.Max(0, word.Length - matchedLen) <= stringDistMax;
-                Console.WriteLine("{2}: {0}, {1}", s, word, similar);
+                //Console.WriteLine("{2}: {0}, {1}", s, word, similar);
                 if (similar)
                 {
                     name = s;
