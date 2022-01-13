@@ -108,7 +108,8 @@ namespace WebExAttendance_Form
 
 
         private void Frame_Load(object sender, EventArgs e)
-        {  
+        {
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
         }
 
         public void Scroll(int amtClicks, int dir = -1)
@@ -151,6 +152,11 @@ namespace WebExAttendance_Form
             Input[] inputs = new Input[] { clickDown, clickUp, scroll };
 
             SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(Input)));
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

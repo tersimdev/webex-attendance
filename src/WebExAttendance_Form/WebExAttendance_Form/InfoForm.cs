@@ -12,133 +12,7 @@ namespace WebExAttendance_Form
 {
     public partial class InfoForm : Form
     {
-        #region Helper Classes
-        public class PersonName
-        {
-            public PersonName(string fullName)
-            {
-                this.fullName = fullName;
-                names = fullName.ToLower().Split(' ');
-            }
-            //because a person can have more than one word in name, i.e. Tan Xiao Ming
-            private string[] names = null;
-            public string fullName { private set; get; } = "";
-
-            //x letter same means same name, for those long names that got cut
-            private const int substringThreshold = 6;
-            private const int stringDistMax = 2;
-
-
-            //asumes word is in lowercase
-            public bool IsNameInWord(string word)
-            {
-                //its a letter not a word >:(
-                if (word.Length <= 1)
-                    return false;
-
-                //check if the word contains any part of their name    
-                //e.g. 2123123jonsdfsdf(word) in jon(name)
-                foreach (string s in names)
-                {
-                    if (word.Contains(s))
-                        return true;
-                }
-
-                //check if a substring of the word is a substring of their (long) name
-                //e.g.12313jonathan(word) vs jonathanroger(name)
-                //foreach (string s in names)
-                //{
-                //    char secondLtr = s[1];
-                //    //look for same letter
-                //    for (int i = 0; i < word.Length; ++i)
-                //    {
-                //        if (word[i] != secondLtr)
-                //            continue;
-                //        int sameLtrCount = 1;
-                //        for (int j = 0; j < s.Length; ++j)
-                //        {
-                //            if (i + j >= word.Length)
-                //                break;
-                //            if (word[i + j] == s[j])
-                //                ++sameLtrCount;
-                //        }
-                //        if (sameLtrCount >= substringThreshold)
-                //            return true;
-                //    }
-                //}
-
-
-                //check if word is similar to name i.e. mispelt with noise infront
-                //e.g. 123jomath(word) vs jonath(name)
-                //foreach (string s in names)
-                //{
-                //    //char firstLtr = s[0];
-                //    for (int i = 0; i < word.Length; ++i)
-                //    {
-                //        int distance = LevenshteinDistance(word, s);
-
-                //        if (word.Length >= substringThreshold)
-                //            if (distance <= stringDistMax)
-                //                return true;
-                //    }
-                //}
-
-                return false;
-            }
-
-
-            //not written by me! thanks google
-            private static int LevenshteinDistance(string s, string t)
-            {
-                int n = s.Length;
-                int m = t.Length;
-                int[,] d = new int[n + 1, m + 1];
-
-                // Step 1
-                if (n == 0)
-                {
-                    return m;
-                }
-
-                if (m == 0)
-                {
-                    return n;
-                }
-
-                // Step 2
-                for (int i = 0; i <= n; d[i, 0] = i++)
-                {
-                }
-
-                for (int j = 0; j <= m; d[0, j] = j++)
-                {
-                }
-
-                // Step 3
-                for (int i = 1; i <= n; i++)
-                {
-                    //Step 4
-                    for (int j = 1; j <= m; j++)
-                    {
-                        // Step 5
-                        int cost = (t[j - 1] == s[i - 1]) ? 0 : 1;
-
-                        // Step 6
-                        d[i, j] = Math.Min(
-                            Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1),
-                            d[i - 1, j - 1] + cost);
-                    }
-                }
-                // Step 7
-                return d[n, m];
-            }
-        }
-        #endregion
-
-
-
         //state
-        private List<string> recognisedWords = null;
         private List<string> filters = null;
         public List<PersonName> nameList { private set; get; } = null;
         public Dictionary<PersonName, bool> attendanceDict { private set; get; } = null;
@@ -187,8 +61,6 @@ namespace WebExAttendance_Form
 
         public void ProcessWords(List<string> recognisedWords)
         {
-            this.recognisedWords = recognisedWords;
-
             foreach (string word in recognisedWords)
             {
                 string filteredWord = word.ToLower();
@@ -213,10 +85,12 @@ namespace WebExAttendance_Form
 
                 foreach (PersonName name in nameList)
                 {
-                    if (name.IsNameInWord(filteredWord))
-                    {
-                        attendanceDict[name] = true;
-                    }
+
+                    if (PersonName.IsNameInWord(name, filteredWord, out string matchedNameStr))
+                        name.SetNameMatched(matchedNameStr);
+
+                    if (name.IsAllNameMatched())                    
+                        attendanceDict[name] = true;                    
                 }
             }
 
