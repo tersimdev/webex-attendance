@@ -150,7 +150,10 @@ namespace WebExAttendance_Form
         private void ResetAttendance()
         {
             foreach (var name in nameList)
+            {
+                name.ResetNameMatched();
                 attendanceDict[name] = false;
+            }
         }
         private void ShowAttendance()
         {
@@ -183,10 +186,8 @@ namespace WebExAttendance_Form
 
         private void btnDetect_Click(object sender, EventArgs e)
         {
-            ResetAttendance();
-
             labelInfo.Text = "Loading...";
-            //TODO do this in another thread
+            ResetAttendance();
 
             frame.Hide();
             frame.Click();
